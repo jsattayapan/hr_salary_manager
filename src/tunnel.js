@@ -10,6 +10,96 @@ export const getEmployeeListForHr = (data, callback) => {
   makePostRequest('hr/getEmployeeListForHr', data, res => callback(res))
 }
 
+export const getEmployeeListForPayroll = (data, callback) => {
+  makePostRequest('hr/getEmployeeListForPayroll', data, res => callback(res))
+}
+
+
+export const getEmployeeTimeScanById = (data, callback) => {
+  makePostRequest('hr/getEmployeeTimeScanById', data, res => callback(res))
+}
+
+
+export const getLeaveById = (data, callback) => {
+  makePostRequest('hr/getLeaveById', data, res => callback(res))
+}
+
+
+export const getSalaryByEmployeeId = (data, callback) => {
+  makePostRequest('hr/getSalaryByEmployeeId', data, res => callback(res))
+}
+
+
+export const submitEditSalary = (data, callback) => {
+  makePostRequest('hr/submitEditSalary', data, res => callback(res))
+}
+
+
+export const addScheduleUpdateSalary = (data, callback) => {
+  makePostRequest('hr/addScheduleUpdateSalary', data, res => callback(res))
+}
+
+export const submitEmployeeAccount = (data, callback) => {
+  makePostRequest('hr/submitEmployeeAccount', data, res => callback(res))
+}
+
+export const getEmployeePublicHoliday = (data, callback) => {
+  makePostRequest('deptManager/getEmployeePublicHoliday', data, res => callback(res))
+}
+
+
+export const saveEmployeeSalaryPayment = (data, callback) => {
+  makePostRequest('hr/saveEmployeeSalaryPayment', data, res => callback(res))
+}
+
+
+export const getEmployeeAccountById = (data, callback) => {
+  makePostRequest('hr/getEmployeeAccountById', data, res => callback(res))
+}
+
+export const deleteEmployeeAccount = (data, callback) => {
+  makePostRequest('hr/deleteEmployeeAccount', data, res => callback(res))
+}
+
+
+export const submitNoteToEmployee = (data, callback) => {
+  makePostRequest('hr/submitNoteToEmployee', data, res => callback(res))
+}
+
+
+export const deleteEmployeeNoteByNoteId = (data, callback) => {
+  makePostRequest('hr/deleteEmployeeNoteByNoteId', data, res => callback(res))
+}
+
+
+export const getEmployeeNoteListById = (data, callback) => {
+  makePostRequest('hr/getEmployeeNoteListById', data, res => callback(res))
+}
+
+
+export const submitDocument = (data, callback) => {
+  const formData = new FormData();
+  formData.append('employeeId', data.employeeId);
+  formData.append('name', data.filename);
+  formData.append('imageFile', data.file);
+  makePostRequest('hr/submitDocument', formData, res => callback(res))
+}
+
+
+export const getEmployeeDocumentById = (data, callback) => {
+  makePostRequest('hr/getEmployeeDocumentById', data, res => callback(res))
+}
+
+
+export const updateWarningApprove = (data, callback) => {
+  makePostRequest('hr/updateWarningApprove', data, res => callback(res))
+}
+
+
+export const getWarningById = (data, callback) => {
+  makePostRequest('hr/getWarningById', data, res => callback(res))
+}
+
 
 
 function makePostRequest(route, data, callback){
@@ -32,5 +122,6 @@ function makeGetRequest(route, callback){
 
 export default {
   getDepartments,
-  getEmployeeListForHr
+  getEmployeeListForHr,
+  getEmployeeTimeScanById
 }

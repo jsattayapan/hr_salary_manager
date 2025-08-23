@@ -5,7 +5,7 @@ const Container = props => {
 
   return (
     <div>
-      <EmployeeList />
+      <EmployeeList user={props.user} />
     </div>
   )
 }
