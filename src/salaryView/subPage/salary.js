@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import moment from 'moment'
 import { SiTicktick } from "react-icons/si";
 import Select from 'react-select'
-import { getEmployeeTimeScanById, submitEditSalary, addScheduleUpdateSalary, getSalaryByEmployeeId, saveEmployeeSalaryPayment} from './../../tunnel'
+import { getEmployeeTimeScanById, submitEditSalary, addScheduleUpdateSalary, getSalaryByEmployeeId, saveEmployeeSalaryPayment, getEmployeeAccountById, getEmployeeSalaryReceipt} from './../../tunnel'
 import { convertMinutes } from './helper'
 import Swal from "sweetalert2";
 
@@ -15,19 +15,55 @@ const Salary = props => {
   const [workingMinutes, setWorkingMinutes] = useState('')
   const [customDayOff, setCustomDayOff] = useState('')
   const [salary, setSalary] = useState(null)
+  const [month, setMonth] = useState(new Date())
+  const [accountList, setAccountList] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [salaryReceipt, setSalaryReceipt] = useState(null)
+
+  const today = new Date()
+  const currentMonth = today.toISOString().slice(0,7)
 
   useEffect(() => {
-    getTimetableByMonth(new Date())
-    getSalary()
+     loadData(month)
+     getSalary()
   },[])
+
+  const loadData = async (thisMonth) => {
+    console.log('Ere');
+    setIsLoading(true)
+    await getTimetableByMonth(thisMonth)
+    await getEmployeeAccount(thisMonth)
+    await getEmployeeReceipt(thisMonth)
+
+    setMonth(thisMonth)
+    setIsLoading(false)
+  }
+
+  const getEmployeeReceipt = (month) => {
+    getEmployeeSalaryReceipt({employeeId: props.employeeInfo.id, month, type: 'manager'}, res => {
+      if(res.status){
+        setSalaryReceipt(res.recceipt)
+        return true
+      }
+    })
+  }
+
+  const getEmployeeAccount = (month) => {
+    getEmployeeAccountById({employeeId: props.employeeInfo.id, month, type: 'manager'}, res => {
+
+      if(res.status){
+        setAccountList(res.accountList)
+        return true
+      }
+    })
+  }
 
   const getTimetableByMonth = (date) => {
 
     getEmployeeTimeScanById({employeeId: props.employeeInfo.id, month: date } ,res => {
         if(res.status){
-          console.log(res.payload);
           setTimetableList( res.payload)
-
+            return true
         }
       })
   }
@@ -40,13 +76,20 @@ const Salary = props => {
       })
   }
 
+  const changeMonth = (e) => {
+    const [year, month] = e.target.value.split("-");
+    // สร้าง Date ใหม่ (set เป็นวันแรกของเดือนนั้น)
+    const newDate = new Date(year, month - 1,10);
+    loadData(newDate)
+  }
+
   const options = [
   { value: true, label: 'ใช่' },
   { value: false, label: 'ไม่ใช่' }
 ];
   let addAmount = 0
   let reduceAmount = 0
-  for(const acc of props.employeeInfo.accountList){
+  for(const acc of accountList){
     if(acc.type === 'เงินได้'){
       addAmount += acc.amount
     }
@@ -239,10 +282,21 @@ const Salary = props => {
     });
 }
 
-  return (
+  return ( isLoading ?
+    <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid"></div>
+          <p className="mt-4">กำลังโหลด...</p>
+        </div>
+        :
     <div className="row text-start">
-      <div className="col-12 text-end mb-4">
-        <span>รอบเดือน: <b>{moment().format('MMMM YYYY')}</b></span>
+      <div className="col-12 text-end my-4">
+        <input
+          type="month"
+          value={month.toISOString().slice(0, 7)}
+          max={currentMonth}
+          onChange={(e) => changeMonth(e)}
+        />
+      <h4 className="pt-4">รอบเดือน: {moment(month).format('MMMM YYYY')}</h4>
       </div>
       <hr />
         <div className="col-12 text-end mb-2 ">
@@ -261,7 +315,7 @@ const Salary = props => {
             </div>
             <div className="col-2">
               <div className="input-group mb-3">
-                <input  onChange={(e) => setWorkingDay(e.target.value)} value={props.employeeInfo.workingMinutes !== null ? workingResultTimeObject.day : workingDay} disabled={props.employeeInfo.workingMinutes !== null} placeholder={workingTimeObject.day} type="number" className="form-control" aria-label="Recipient’s username" aria-describedby="basic-addon2" />
+                <input  onChange={(e) => setWorkingDay(e.target.value)} value={salaryReceipt !== null ? workingResultTimeObject.day : workingDay} disabled={props.employeeInfo.workingMinutes !== null} placeholder={workingTimeObject.day} type="number" className="form-control" aria-label="Recipient’s username" aria-describedby="basic-addon2" />
                 <span className="input-group-text" >วัน</span>
               </div>
             </div>
@@ -320,7 +374,7 @@ const Salary = props => {
               </thead>
               <tbody>
                 {
-                  props.employeeInfo.accountList.filter(acc => acc.type === 'เงินได้').map(acc => (
+                  accountList.filter(acc => acc.type === 'เงินได้').map(acc => (
                     <tr>
                       <td>{acc.remark}</td>
                       <td>{acc.amount}.-</td>
@@ -342,7 +396,7 @@ const Salary = props => {
             </thead>
             <tbody>
               {
-                props.employeeInfo.accountList.filter(acc => acc.type === 'เงินหัก').map(acc => (
+                accountList.filter(acc => acc.type === 'เงินหัก').map(acc => (
                   <tr>
                     <td>{acc.remark}</td>
                     <td>{acc.amount}.-</td>

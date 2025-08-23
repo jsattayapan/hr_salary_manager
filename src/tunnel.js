@@ -76,6 +76,10 @@ export const getEmployeeNoteListById = (data, callback) => {
   makePostRequest('hr/getEmployeeNoteListById', data, res => callback(res))
 }
 
+export const getEmployeeSalaryReceipt = (data, callback) => {
+  makePostRequest('hr/getEmployeeSalaryReceipt', data, res => callback(res))
+}
+
 
 export const submitDocument = (data, callback) => {
   const formData = new FormData();
