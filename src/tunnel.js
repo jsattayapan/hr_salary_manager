@@ -81,6 +81,19 @@ export const getEmployeeSalaryReceipt = (data, callback) => {
 }
 
 
+export const submitEmployeeTimetable = (data, callback) => {
+  makePostRequest('deptManager/submitEmployeeTimetable', data, res => callback(res))
+}
+
+
+export const deleteEmployeeTimetable = (data, callback) => {
+  makePostRequest('deptManager/deleteEmployeeTimetable', data, res => callback(res))
+}
+
+export const submitemployeeDayOff = (data, callback) => {
+  makePostRequest('deptManager/submitemployeeDayOff', data, res => callback(res))
+}
+
 export const submitDocument = (data, callback) => {
   const formData = new FormData();
   formData.append('employeeId', data.employeeId);

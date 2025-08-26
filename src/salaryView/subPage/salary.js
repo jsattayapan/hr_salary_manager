@@ -39,17 +39,17 @@ const Salary = props => {
     setIsLoading(false)
   }
 
-  const getEmployeeReceipt = (month) => {
-    getEmployeeSalaryReceipt({employeeId: props.employeeInfo.id, month, type: 'manager'}, res => {
+  const getEmployeeReceipt = (thisMonth) => {
+    getEmployeeSalaryReceipt({employeeId: props.employeeInfo.id, monthYear: thisMonth, type: 'manager'}, res => {
       if(res.status){
-        setSalaryReceipt(res.recceipt)
+        setSalaryReceipt(res.receipt)
         return true
       }
     })
   }
 
-  const getEmployeeAccount = (month) => {
-    getEmployeeAccountById({employeeId: props.employeeInfo.id, month, type: 'manager'}, res => {
+  const getEmployeeAccount = (thisMonth) => {
+    getEmployeeAccountById({employeeId: props.employeeInfo.id, month: thisMonth, type: 'manager'}, res => {
 
       if(res.status){
         setAccountList(res.accountList)
@@ -105,12 +105,15 @@ const Salary = props => {
   let totalExtraLeave = 0
   let totalSickLeave = 0
   let totalBusinessLeave = 0
+  let totalHolidayLeave = 0
   let totalDayForFullWork = 0
+  let totalOtMintues = 0
   for(const time of timetableList) {
+    totalOtMintues += time.countableOTTime ? time.countableOTTime : 0
     if(time.result === 'working'){
       totalMinutes += time.countableWorkingTime
     }
-    if(time.result === 'dayOff'){
+    if(time.result === 'dayOff' || time.result === 'dayOff+OT'){
       totalDayOff += 1
     }
     if(time.result === 'leave'){
@@ -123,16 +126,22 @@ const Salary = props => {
       if(time.leave.type === 'ลากิจ'){
         totalBusinessLeave += 1
       }
+
+      if(time.leave.type === 'ลาพักร้อน'){
+        totalHolidayLeave += 1
+      }
     }
   }
 
-  totalDayForFullWork = timetableList.length - totalSickLeave - totalBusinessLeave - totalExtraLeave
+  totalDayForFullWork = timetableList.length - totalSickLeave - totalBusinessLeave - totalExtraLeave - totalHolidayLeave
 
-  totalDayForFullWork -= customDayOff ? customDayOff : totalDayOff
 
+  totalMinutes += totalOtMintues
   let getPaidAmount = 0
   let getPaidMinutes = 0
   let customWorkingMinutes = 0
+  let benefitPaidAmount = 0
+  let positionAmountPaid = 0
 
 
 
@@ -142,11 +151,12 @@ const Salary = props => {
 
 
     let minuteRate = 0
+    let fixRate = 0
   if(salary){
-    minuteRate = (salary.salaryAmount + salary.positionAmount) / timetableList.length / 10 / 60
-
+    minuteRate = (salary.salaryAmount) / timetableList.length / 10 / 60
+    fixRate = (salary.salaryAmount) / 30 / 10 / 60
     if(workingDay === '' && workingHour === '' && workingMinutes === ''){
-      getPaidMinutes += totalMinutes
+      getPaidMinutes += (totalMinutes)
       customWorkingMinutes += totalMinutes
     }else{
       getPaidMinutes += workingDay === '' ? workingTimeObject.day * 10 * 60 : parseInt(workingDay) * 10 * 60
@@ -161,26 +171,38 @@ const Salary = props => {
 
 
     getPaidMinutes += customDayOff === '' ? totalDayOff * 10 * 60 : parseInt(customDayOff) * 10 * 60
-    getPaidMinutes += (totalExtraLeave + totalSickLeave +totalBusinessLeave) * 10 * 60
+    benefitPaidAmount += (totalExtraLeave + totalSickLeave +totalBusinessLeave + totalHolidayLeave) * 10 * 60
 
-    getPaidAmount = minuteRate * getPaidMinutes
-
+    // getPaidAmount = Math.round(getPaidMinutes * minuteRate)
+    getPaidAmount = Math.round(salary.salaryAmount - ((totalDayForFullWork * 600) - getPaidMinutes) * fixRate)
+    benefitPaidAmount = Math.round(benefitPaidAmount * fixRate)
+    getPaidAmount -= benefitPaidAmount
+    positionAmountPaid = salary.positionAmount
 
   }
 
-  if(props.employeeInfo.workingMinutes !== null){
+
+
+
+  totalDayForFullWork -= customDayOff ? customDayOff : totalDayOff
+
+  let socialSecurity = includeSocialSecurity.value ? getPaidAmount < salary.salaryAmount ? getPaidAmount * 5/100 : salary.salaryAmount * 5/100 : 0
+
+  socialSecurity =  socialSecurity > 750 ? 750 : Math.round(socialSecurity)
+
+  if(salaryReceipt !== null) {
+    socialSecurity = salaryReceipt.socialSecurity
+    getPaidAmount = salaryReceipt.earning
+    displayDayOff = salaryReceipt.dayOff
+    positionAmountPaid = salaryReceipt.compensation
     workingResultTimeObject = convertMinutes(props.employeeInfo.workingMinutes)
     let dayOffPaid = props.employeeInfo.earning - ((((totalExtraLeave + totalSickLeave +totalBusinessLeave) * 10 * 60) + props.employeeInfo.workingMinutes) * minuteRate)
     dayOffPaid = dayOffPaid/minuteRate
-    displayDayOff = convertMinutes(Math.round(dayOffPaid))
-    console.log(dayOffPaid);
-    console.log(displayDayOff);
   }
 
-  const socialSecurity = includeSocialSecurity.value ? getPaidAmount * 5/100 : 0
+  let totalSum = getPaidAmount+ positionAmountPaid+ benefitPaidAmount+addAmount-reduceAmount
+    totalSum -= socialSecurity
 
-  let totalSum = 0
-  totalSum += Math.round(getPaidAmount)+addAmount-reduceAmount-Math.round(socialSecurity)
 
   const openSalarySettingPopup = () => {
     // build month list
@@ -265,14 +287,18 @@ const Salary = props => {
           employeeId: props.employeeInfo.id,
           socialSecurity: Math.round(socialSecurity),
           earning: Math.round(getPaidAmount),
-          compensation: 0,
-          workingMinutes: customWorkingMinutes}
+          compensation: salary.positionAmount,
+          workingMinutes: customWorkingMinutes,
+          benefitPaid: Math.round(benefitPaidAmount),
+          dayOff: customDayOff === '' ? totalDayOff : customDayOff
+        }
           console.log(payload);
         saveEmployeeSalaryPayment(payload,(res) => {
           console.log(res);
           if (res.status) {
             Swal.fire("สำเร็จ!", "ทำการบันทึกเรียบร้อยแล้ว", "success");
             props.refreshEmployeeList()
+            loadData(month)
           } else {
             Swal.fire("ผิดพลาด!", res.msg || "ไม่สามารถบันทึกได้", "error");
           }
@@ -281,6 +307,7 @@ const Salary = props => {
       }
     });
 }
+
 
   return ( isLoading ?
     <div className="flex flex-col items-center">
@@ -315,19 +342,19 @@ const Salary = props => {
             </div>
             <div className="col-2">
               <div className="input-group mb-3">
-                <input  onChange={(e) => setWorkingDay(e.target.value)} value={salaryReceipt !== null ? workingResultTimeObject.day : workingDay} disabled={props.employeeInfo.workingMinutes !== null} placeholder={workingTimeObject.day} type="number" className="form-control" aria-label="Recipient’s username" aria-describedby="basic-addon2" />
+                <input  onChange={(e) => setWorkingDay(e.target.value)} value={salaryReceipt !== null ? workingResultTimeObject.day : workingDay} disabled={salaryReceipt !== null} placeholder={workingTimeObject.day} type="number" className="form-control" aria-label="Recipient’s username" aria-describedby="basic-addon2" />
                 <span className="input-group-text" >วัน</span>
               </div>
             </div>
             <div className="col-2">
               <div className="input-group mb-3">
-                <input value={props.employeeInfo.workingMinutes !== null ? workingResultTimeObject.hours : workingHour} disabled={props.employeeInfo.workingMinutes !== null} onChange={(e) => setWorkingHour(e.target.value)} placeholder={workingTimeObject.hours} type="number" className="form-control"  aria-label="Recipient’s username" aria-describedby="basic-addon2" />
+                <input value={salaryReceipt !== null ? workingResultTimeObject.hours : workingHour} disabled={salaryReceipt !== null} onChange={(e) => setWorkingHour(e.target.value)} placeholder={workingTimeObject.hours} type="number" className="form-control"  aria-label="Recipient’s username" aria-describedby="basic-addon2" />
                 <span className="input-group-text">ชม.</span>
               </div>
             </div>
             <div className="col-2">
               <div className="input-group mb-3">
-                <input value={props.employeeInfo.workingMinutes !== null ? workingResultTimeObject.minutes : workingMinutes} disabled={props.employeeInfo.workingMinutes !== null} onChange={(e) => setWorkingMinutes(e.target.value)} placeholder={workingTimeObject.minutes} type="number" className="form-control"  aria-label="Recipient’s username" aria-describedby="basic-addon2" />
+                <input value={salaryReceipt !== null ? workingResultTimeObject.minutes : workingMinutes} disabled={salaryReceipt !== null} onChange={(e) => setWorkingMinutes(e.target.value)} placeholder={workingTimeObject.minutes} type="number" className="form-control"  aria-label="Recipient’s username" aria-describedby="basic-addon2" />
                 <span className="input-group-text" >นาที</span>
               </div>
             </div>
@@ -343,7 +370,7 @@ const Salary = props => {
             </div>
             <div className="col-2">
               <div className="input-group mb-3">
-                <input value={props.employeeInfo.workingMinutes !== null ? displayDayOff.day : customDayOff} disabled={props.employeeInfo.workingMinutes !== null} onChange={(e) => setCustomDayOff(e.target.value)} placeholder={totalDayOff} type="number" className="form-control" aria-label="Recipient’s username" aria-describedby="basic-addon2" />
+                <input value={salaryReceipt !== null ? displayDayOff : customDayOff} disabled={salaryReceipt !== null} onChange={(e) => setCustomDayOff(e.target.value)} placeholder={totalDayOff} type="number" className="form-control" aria-label="Recipient’s username" aria-describedby="basic-addon2" />
                 <span className="input-group-text" >วัน</span>
               </div>
             </div>
@@ -356,7 +383,12 @@ const Salary = props => {
               <span><b>จ่ายประกันสังคม:</b> </span>
             </div>
             <div className="col-2 mb-3">
-              <Select isDisabled={props.employeeInfo.workingMinutes !== null} value={props.employeeInfo.socialSecurity > 0 ? { value: true, label: 'ใช่' } : { value: false, label: 'ไม่ใช่' }} onChange={(e) => setIncludeSocialSecurity(e)} options={options} />
+              <Select isDisabled={salaryReceipt !== null} value={
+                  salaryReceipt !== null ?
+                    props.employeeInfo.socialSecurity > 0 ?
+                    { value: true, label: 'ใช่' }
+                    : { value: false, label: 'ไม่ใช่' }
+                    :  includeSocialSecurity } onChange={(e) => setIncludeSocialSecurity(e)} options={options} />
             </div>
           </div>
         </div>
@@ -413,7 +445,13 @@ const Salary = props => {
         <div className="col-6 my-1 text-end">
           <div className="row">
             <div className="col-12">
-              <span>เงินเดือน: <b style={{color: 'green'}}>{parseInt(getPaidAmount).toLocaleString()} บาท</b></span>
+              <span>เงินเดือน: <b style={{color: 'green'}}>{getPaidAmount.toLocaleString()} บาท</b></span>
+            </div>
+            <div className="col-12">
+              <span>ค่าตำแหน่ง: <b style={{color: 'green'}}>{salaryReceipt ?salaryReceipt.compensation.toLocaleString() : positionAmountPaid.toLocaleString()} บาท</b></span>
+            </div>
+            <div className="col-12">
+              <span>เงินจากการใช้สิทธิ์: <b style={{color: 'red'}}>{Math.round(benefitPaidAmount).toLocaleString()} บาท</b></span>
             </div>
             {addAmount ? <div className="col-12">
               <span>เงินได้: <b style={{color: 'green'}}>{addAmount} บาท</b></span>
@@ -422,17 +460,17 @@ const Salary = props => {
               <span>เงินหัก: <b style={{color: 'red'}}>{reduceAmount} บาท</b></span>
             </div>
             <div className="col-12">
-              <span>ประกันสังคม: <b style={{color: 'red'}}>{Math.round(socialSecurity).toLocaleString()} บาท</b></span>
+              <span>ประกันสังคม: <b style={{color: 'red'}}>{socialSecurity.toLocaleString()} บาท</b></span>
             </div>
             <div className="col-12">
-              <span>สรุป: <b style={{color: 'green'}}>{parseInt(totalSum).toLocaleString()} บาท</b></span>
+              <span>สรุป: <b style={{color: 'green'}}>{totalSum.toLocaleString()} บาท</b></span>
             </div>
           </div>
         </div>
         <div className="col-6 text-end my-1">
           <div className="row">
             <div className="col-12">
-              <span>วันหยุด: <b>{customDayOff === '' ? totalDayOff : customDayOff}</b> วัน</span>
+              <span>วันหยุด: <b>{salaryReceipt !== null ? displayDayOff : customDayOff === '' ? totalDayOff : customDayOff}</b> วัน</span>
             </div>
             <div className="col-12">
               <span>ลาป่วย: <b>{totalSickLeave}</b> วัน</span>
@@ -443,10 +481,13 @@ const Salary = props => {
             <div className="col-12">
               <span>ลากิจ: <b>{totalBusinessLeave}</b> วัน</span>
             </div>
+            <div className="col-12">
+              <span>พักร้อน: <b>{totalHolidayLeave}</b> วัน</span>
+            </div>
           </div>
         </div>
         <div className="col-12 text-end my-1">
-          {props.employeeInfo.workingMinutes !== null ?
+          {salaryReceipt !== null ?
             <button className="btn btn-info">พิมพ์สลิปเงินเดือน</button>
             :
             <button onClick={handleSaveSalaryPaymentBtnClick} className="btn btn-success">บันทึกสรุปเงินเดือน</button>

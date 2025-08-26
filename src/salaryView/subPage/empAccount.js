@@ -153,6 +153,9 @@ const EmpAccount = props => {
         const amountPerMonth = document.getElementById("swal-amountPerMonth").value;
         const amount = document.getElementById("swal-amount").value;
         const note = document.getElementById("swal-note").value;
+        console.log('amountPerMonth: ', amountPerMonth);
+        console.log('amount: ', amount);
+        console.log(parseInt(amount) <= parseInt(amountPerMonth));
         if (!amount) {
           Swal.showValidationMessage("กรุณากรอกจำนวนเงิน");
           return;
@@ -165,7 +168,7 @@ const EmpAccount = props => {
           Swal.showValidationMessage("กรุณาใส่จำนวนเงินที่มากกว่า 0");
           return;
         }
-        if (amount <= amountPerMonth) {
+        if (parseInt(amount) <= parseInt(amountPerMonth)) {
           Swal.showValidationMessage("ยอดเต็มไม่สามารถน้อยกว่ายอดแบ่งจ่าย");
           return;
         }

@@ -103,10 +103,39 @@ const backBtn = () => {
   setSelectedEmployee(null)
 }
 
+let sumWorkingHour = 0
+let sumEarning = 0
+let payCom = 0
+let sumReceive = 0
+let sumExpense = 0
+let sumBenefit = 0
+let sumPosition = 0
+let sumSocialSecurity = 0
+
+for(const emp of employeeList){
+  sumWorkingHour += emp.workingMinutes ? emp.workingMinutes : 0
+  sumEarning += emp.earning ? emp.earning : 0
+  sumBenefit += emp.benefitPaid ? emp.benefitPaid : 0
+  sumPosition += emp.compensation ? emp.compensation : 0
+  sumSocialSecurity += emp.socialSecurity ? emp.socialSecurity : 0
+  sumExpense += emp.workingMinutes ? emp.accountList.reduce((total, ea) => ea.type === 'เงินหัก' ? total + ea.amount : total , 0) : 0
+  sumReceive += emp.workingMinutes ?emp.accountList.reduce((total, ea) => ea.type === 'เงินได้' ? total + ea.amount : total, 0) : 0
+}
+
 const  listTable = (
   <div className="row">
-      <div style={{display:"flex"}}>
-        <SummaryDashboard noOfEmployee={noOfEmployee} />
+      <div>
+        <SummaryDashboard
+          noOfEmployee={noOfEmployee}
+          sumWorkingHour={convertMinutesToDHrMin(sumWorkingHour)}
+          sumEarning={sumEarning}
+          sumSalayNet={sumEarning}
+          sumExpense={sumExpense}
+          sumReceive={sumReceive}
+          sumBenefit={sumBenefit}
+          sumPosition={sumPosition}
+          sumSocialSecurity={sumSocialSecurity}
+        />
       </div>
       <div className='col-12'>
          <table className="table table-striped">
@@ -164,12 +193,26 @@ const  listTable = (
                         </div>
                       </div>
                     </td>
-                    <td className="align-middle" style={{width: '10%'}}><b>{emp.workingMinutes ? convertMinutesToDHrMin(emp.workingMinutes) : '-' }</b></td>
-                    <td className="align-middle" style={{width: '10%'}}><b>{emp.earning ? '฿' + emp.earning.toLocaleString() : '-' }</b></td>
-                      <td className="align-middle" style={{width: '10%'}}><b>-฿{receive.toLocaleString()} </b></td>
-                      <td className="align-middle" style={{width: '10%', color: 'red'}}><b>{emp.socialSecurity ? '฿' + emp.socialSecurity : '-' }</b></td>
-                      <td className="align-middle" style={{width: '10%', color: 'red'}}><b>-฿{expense.toLocaleString()}</b></td>
-                    <td className="align-middle text-center" style={{width: '10%', color: 'green'}}><b>{emp.workingMinutes ? '฿' + (emp.earning +receive - emp.socialSecurity - expense).toLocaleString() : '-' }</b></td>
+                    <td className="align-middle" style={{width: '10%'
+                     }}>{emp.workingMinutes ? convertMinutesToDHrMin(emp.workingMinutes) : '-' }</td>
+                    <td className="align-middle" style={{width: '10%',
+                      color: emp.workingMinutes ? 'green': 'black'}}>{emp.earning ? '฿' + emp.earning.toLocaleString() : '-' }</td>
+                  <td className="align-middle" style={{width: '10%',
+                    color: (receive
+                    + emp.compensation
+                    + emp.benefitPaid) ? 'green': 'black'}}>
+                    {(
+                    receive
+                    + emp.compensation
+                    + emp.benefitPaid
+                  ) ? '฿' + (
+                  receive
+                  + emp.compensation
+                  + emp.benefitPaid
+                ).toLocaleString() : '-' }</td>
+                      <td className="align-middle" style={{width: '10%', color: 'red'}}>{emp.socialSecurity ? '฿' + emp.socialSecurity : '-' }</td>
+                    <td className="align-middle" style={{width: '10%', color: 'red'}}>{emp.workingMinutes ? '฿' + expense.toLocaleString() : '-'}</td>
+                    <td className="align-middle text-center" style={{width: '10%', color: 'green'}}><b>{emp.workingMinutes ? '฿' + (emp.earning + emp.benefitPaid+  emp.compensation + receive - emp.socialSecurity - expense).toLocaleString() : '-' }</b></td>
                     <td className="align-middle" style={{width: '5%'}}>
                       <button onClick={() => handleEmployeeOnClick(emp.id)} className="btn btn-link mx-1">View</button>
                     </td>
