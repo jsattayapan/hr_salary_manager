@@ -53,6 +53,9 @@ export const saveEmployeeSalaryPayment = (data, callback) => {
 }
 
 
+
+
+
 export const getEmployeeAccountById = (data, callback) => {
   makePostRequest('hr/getEmployeeAccountById', data, res => callback(res))
 }
@@ -61,6 +64,10 @@ export const deleteEmployeeAccount = (data, callback) => {
   makePostRequest('hr/deleteEmployeeAccount', data, res => callback(res))
 }
 
+
+export const submitLeaveByPayroll = (data, callback) => {
+  makePostRequest('hr/submitLeaveByPayroll', data, res => callback(res))
+}
 
 export const submitNoteToEmployee = (data, callback) => {
   makePostRequest('hr/submitNoteToEmployee', data, res => callback(res))
@@ -109,7 +116,10 @@ export const getEmployeeDocumentById = (data, callback) => {
 
 
 export const updateWarningApprove = (data, callback) => {
-  makePostRequest('hr/updateWarningApprove', data, res => callback(res))
+  const formData = new FormData();
+  formData.append('id', data.id);
+  formData.append('imageFile', data.imageFile);
+  makePostRequest('hr/updateWarningApprove', formData, res => callback(res))
 }
 
 

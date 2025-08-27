@@ -119,7 +119,7 @@ import Notes from './subPage/notes'
           <div className="col-9">
 
           {
-            subPage === 'ตารางเวลา' ? <Timetable employeeInfo={employeeInfo} /> : ''
+            subPage === 'ตารางเวลา' ? <Timetable employeeInfo={employeeInfo} user={props.user} refreshEmployeeList={props.refreshEmployeeList} /> : ''
           }
 
           {

@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import {convertMinutesToWord, minutesToDisplay} from './helper'
 import moment from 'moment'
 import 'moment/locale/th';
-import { getEmployeeTimeScanById, submitEmployeeTimetable, deleteEmployeeTimetable, submitemployeeDayOff} from './../../tunnel'
+import { getEmployeeTimeScanById, submitEmployeeTimetable, deleteEmployeeTimetable, submitemployeeDayOff, getEmployeePublicHoliday, submitLeaveByPayroll} from './../../tunnel'
 import { FaEllipsisV, FaCalendarTimes } from 'react-icons/fa';
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { FiCoffee } from 'react-icons/fi';
@@ -13,6 +13,7 @@ const smallText = {fontSize: '14px', lineHeight: 0.8}
 
 const Timetable = props => {
     let [timetableList, setTimetableList] = useState([]);
+    let [publicHolidayList, setPublicHolidayList] = useState([]);
     const [menuState, setMenuState] = useState({ isVisible: false, index: null });
     const menuRef = useRef(null); // Create a ref for the popup menu
 
@@ -21,16 +22,25 @@ const Timetable = props => {
     useEffect(() => {
         moment.locale('th');
         getTimetableByMonth(new Date())
+        getPublicHoliday()
       }, []);
 
       const getTimetableByMonth = (date) => {
 
         getEmployeeTimeScanById({employeeId: props.employeeInfo.id, month: date } ,res => {
             if(res.status){
-              console.log(res.payload);
               setTimetableList( res.payload)
             }
           })
+      }
+
+      const getPublicHoliday = () => {
+        getEmployeePublicHoliday({employeeId: props.employeeInfo.id}, res => {
+          if(res.status){
+            console.log(res.employeePublicHolidayList.filter(day => day.status === 'valid'));
+            setPublicHolidayList(res.employeePublicHolidayList.filter(day => day.status === 'valid'))
+          }
+        })
       }
 
 
@@ -60,7 +70,118 @@ const Timetable = props => {
           if(res.type === 'timetable'){
             openSwalEditTimetable(date)
           }
+          if(res.type === 'leave'){
+            openSwalAddLeaveToTimetable(date)
+          }
         })
+      }
+
+      const openSwalAddLeaveToTimetable = async (date) => {
+
+  Swal.fire({
+    title: "เลือกประเภทการลา",
+    html: `
+      <div class="form-group text-start">
+        <label for="leaveType" class="form-label fw-bold">ประเภทการลา</label>
+        <select id="leaveType" class="form-select">
+          <option value="">-- เลือกการลา --</option>
+          <option value="ลา Extra">ลา Extra</option>
+          <option value="ลาป่วย">ลาป่วย</option>
+          <option value="ลาพักร้อน">ลาพักร้อน</option>
+        </select>
+      </div>
+
+      <div id="extraSelect" class="form-group text-start mt-3" style="display:none;">
+        <label for="extraReason" class="form-label fw-bold">เลือกวัน Extra ที่ต้องการใช้</label>
+        <select id="extraReason" class="form-select">
+          ${publicHolidayList.map(opt => `<option value="${opt.publicHolidayId}">${opt.name}</option>`).join("")}
+        </select>
+      </div>
+
+      <div id="sickInput" class="form-group text-start mt-3" style="display:none;">
+        <label for="sickReason" class="form-label fw-bold">เหตุผลการลาป่วย</label>
+        <input type="text" id="sickReason" class="form-control" placeholder="เช่น ไข้หวัด">
+      </div>
+    `,
+    focusConfirm: false,
+    confirmButtonText: "ยืนยัน",
+    cancelButtonText: "ยกเลิก",
+    showCancelButton: true,
+
+    preConfirm: () => {
+      const leaveType = document.getElementById("leaveType").value;
+      let detail = null;
+
+      if (!leaveType) {
+        Swal.showValidationMessage("⚠️ กรุณาเลือกประเภทการลา");
+        return false;
+      }
+
+      if (leaveType === "ลา Extra") {
+        detail = document.getElementById("extraReason").value;
+        if(!detail){
+          Swal.showValidationMessage("⚠️ กรุณาสิทธิ์วันหยุดที่ต้องการใช้");
+          return false;
+        }
+      } else if (leaveType === "ลาป่วย") {
+        detail = document.getElementById("sickReason").value;
+        if (!detail) {
+          Swal.showValidationMessage("⚠️ กรุณากรอกเหตุผลการลาป่วย");
+          return false;
+        }
+      }
+
+      return { leaveType, detail };
+    },
+
+    didOpen: () => {
+      const leaveTypeEl = document.getElementById("leaveType");
+      const extraDiv = document.getElementById("extraSelect");
+      const sickDiv = document.getElementById("sickInput");
+
+      leaveTypeEl.addEventListener("change", (e) => {
+        extraDiv.style.display = "none";
+        sickDiv.style.display = "none";
+
+        if (e.target.value === "ลา Extra") {
+          extraDiv.style.display = "block";
+        } else if (e.target.value === "ลาป่วย") {
+          sickDiv.style.display = "block";
+        }
+      });
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      console.log("ข้อมูลที่เลือก:", {
+        employeeId: props.employeeInfo.id,
+        publicHolidayId: result.value.detail,
+        date,
+        type: result.value.leaveType,
+        remark: result.value.detail,
+        createBy: props.user.username});
+      submitLeaveByPayroll({
+        employeeId: props.employeeInfo.id,
+        publicHolidayId: result.value.detail,
+        date,
+        type: result.value.leaveType,
+        remark: result.value.detail,
+        createBy: props.user.username}, res => {
+          if(res.status){
+            getTimetableByMonth(moment(timetableList[timetableList.length - 1].date, 'DD/MM/YYYY').toDate())
+            getPublicHoliday()
+            props.refreshEmployeeList()
+          }else{
+            Swal.fire(
+                "เกิดข้อผิดพลาด!",
+                res.msg,
+                "error"
+              );
+          }
+        })
+
+    }
+  });
+
       }
 
       const openSwalEditTimetable = async (date) => {
