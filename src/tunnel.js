@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 export const ipAddress = 'http://192.168.100.75:2225'
+// export const ipAddress = 'https://tunit3-samed.ap.ngrok.io'
 
 export const getDepartments = (callback) => {
   makeGetRequest('hr/getDepartments', res => callback(res))

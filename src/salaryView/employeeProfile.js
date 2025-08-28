@@ -105,7 +105,7 @@ import Notes from './subPage/notes'
         <button className="btn" onClick={props.backBtn}><FiArrowLeft /></button>
         <b>Employee Profile</b>
       </div>
-      <div className="col-6">
+      <div className="col-9">
         <ul className="mt-2">
         {
           subPageList.map(page => <SubMenuList onClick={setSubPage} text={page} subPage={subPage}/>)
